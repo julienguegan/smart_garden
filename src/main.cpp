@@ -1,45 +1,83 @@
+#define BLYNK_PRINT Serial // Defines the object that is used for printing
+//#define BLYNK_DEBUG        // Optional, this enables more detailed prints
+#define BLYNK_TEMPLATE_ID "TMPLo61F7WPj"
+#define BLYNK_DEVICE_NAME "smart garden"
+#define BLYNK_AUTH_TOKEN "VjFGkzXrMZ1NyLNuP3e8g2I0JMeawqu9"
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
 #include "Arduino.h"
 
+// Comment this out to disable prints and save space
+//#define BLYNK_PRINT Serial
 // PIN for soil sensor 1
-#define SENSOR_1 4 
-
-// calibration for sensor 1
-const int calib_air_1 = 3440;
-const int calib_water_1 = 1555;
-int soil_value_1 = 0;
-int soil_percent_1 = 100;
+#define SENSOR_1 33
 // PIN for pump 1
-#define PUMP_1 0
-// threshold for triggering pump
-#define THRESHOLD 50
+#define PUMP_1 32
 
-void setup()
+// Your WiFi credentials. Set password to "" for open networks.
+char auth[] = BLYNK_AUTH_TOKEN;
+char ssid[] = "virus_exe";
+char pass[] = "nonpasdewifipourtoi";
+// constant value for handling sensor
+const int calib_air_1   = 3440;
+const int calib_water_1 = 1555;
+int soil_value_1    = 0;
+int soil_percent_1  = 0;
+const int threshold = 50;
+bool switch_pump    = 0;
+float water_time    = 0;
+
+BlynkTimer timer;
+
+// This function is called every time the Virtual Pin 0 state changes
+BLYNK_WRITE(V1)
 {
-  Serial.begin(9600);
-  // pin assignment
-  pinMode(SENSOR_1, OUTPUT);
-  pinMode(PUMP_1, OUTPUT);
-  // set pumps to OFF
-  digitalWrite(PUMP_1, LOW);
-  digitalWrite(alim, HIGH);
-  delay(1000);
+  switch_pump = param.asInt();
+  BLYNK_LOG("switch %d:", switch_pump);
+  water_time = millis();
 }
 
-void loop()
+
+// This function sends Arduino's uptime every second to Virtual Pin 2.
+void myTimerEvent()
 {
+  BLYNK_LOG("soil moisture: %d", soil_percent_1);
   // read soil sensor
   soil_value_1 = analogRead(SENSOR_1);
   soil_percent_1 = map(soil_value_1, calib_air_1, calib_water_1, 0, 100);
-  Serial.println((String) soil_value_1 + " ==> " + soil_percent_1 + " %");
-
-  // trigger pump : for testing we trigger it when water
-  if (soil_percent_1 > THRESHOLD)
-  { 
+  // send value to virtual pin 4
+  Blynk.virtualWrite(V0, soil_percent_1);
+  // activate pump when switch is on
+  elapsedTime = millis() - water_time;
+  if (switch_pump)
+  {
     digitalWrite(PUMP_1, HIGH);
   } else {
     digitalWrite(PUMP_1, LOW);
   }
 
-  // wait for a second
-  delay(1000);
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  // Blynk. Setup a function to be called every second
+  Blynk.begin(auth, ssid, pass);
+  timer.setInterval(1000L, myTimerEvent);
+  // Pin assignment
+  pinMode(SENSOR_1, OUTPUT);
+  pinMode(PUMP_1, OUTPUT);
+  digitalWrite(PUMP_1, LOW);
+  delay(2000);
+}
+
+void loop()
+{
+  Blynk.run();
+  timer.run();
+  // You can inject your own code or combine it with other sketches.
+  // Check other examples on how to communicate with Blynk. Remember
+  // to avoid delay() function!
 }
