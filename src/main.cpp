@@ -11,10 +11,12 @@
 
 // Comment this out to disable prints and save space
 //#define BLYNK_PRINT Serial
-// PIN for soil sensor 1
+// PIN for soil sensor 
 #define SENSOR_1 33
-// PIN for pump 1
+#define SENSOR_2 35
+// PIN for pump 
 #define PUMP_1 32
+#define PUMP_2 13
 
 // Your WiFi credentials. Set password to "" for open networks.
 char auth[] = BLYNK_AUTH_TOKEN;
@@ -23,54 +25,64 @@ char pass[] = "nonpasdewifipourtoi";
 // constant value for handling sensor
 const int calib_air_1   = 3440;
 const int calib_water_1 = 1555;
+const int calib_air_2   = 3420;
+const int calib_water_2 = 1420;
 int soil_value_1    = 0;
+int soil_value_2    = 0;
 int soil_percent_1  = 0;
-bool switch_pump    = 0;
-float water_time    = 0;
-float elapsed_time;
-// time deep sleep
-int time_sleep = 10 * 1e6;
+int soil_percent_2  = 0;
+bool switch_pump_1  = 0;
+bool switch_pump_2  = 0;
 // blynk timer
 BlynkTimer timer;
 
-// This function is called every time the Virtual Pin 0 state changes
+// This function is called every time the Virtual Pin 1 state changes
 BLYNK_WRITE(V1)
 {
-  switch_pump = param.asInt();
-  BLYNK_LOG("switch %d:", switch_pump);
-  water_time = millis();
+  switch_pump_1 = param.asInt();
+  BLYNK_LOG("switch 1: %d", switch_pump_1);
 }
-
+BLYNK_WRITE(V3)
+{
+  switch_pump_2 = param.asInt();
+  BLYNK_LOG("switch 2: %d", switch_pump_2);
+}
 
 // This function sends Arduino's uptime every second to Virtual Pin 2.
 void myTimerEvent()
 {
   // read soil sensor
-  soil_value_1 = analogRead(SENSOR_1);
+  soil_value_1   = analogRead(SENSOR_1);
   soil_percent_1 = map(soil_value_1, calib_air_1, calib_water_1, 0, 100);
+  BLYNK_LOG("soil moisture 1: %d", soil_percent_1);
+  soil_value_2 = analogRead(SENSOR_2);
+  soil_percent_2 = map(soil_value_2, calib_air_2, calib_water_2, 0, 100);
+  BLYNK_LOG("soil moisture 2: %d", soil_percent_2);
   // bug at start that make soil moisture > 100, ignore those cases
-  if (soil_percent_1 > 100)
+  if (soil_percent_1 > 100 || soil_percent_2 > 100)
     return;
-  // send value to virtual pin 4
+  // send value to virtual pin 
   Blynk.virtualWrite(V0, soil_percent_1);
-  // activate pump when switch is on
-  elapsed_time = (millis() - water_time)/1e3; // use now or millis ?
-  if (elapsed_time < 2)
-  {
+  Blynk.virtualWrite(V2, soil_percent_2);
+  // activate pump for 1 second when switch is on
+  if (switch_pump_1) {
     digitalWrite(PUMP_1, HIGH);
-    BLYNK_LOG("SWITCH ON");
-  } else {
+    BLYNK_LOG("SWITCH 1 ON");
+    delay(1000);
     digitalWrite(PUMP_1, LOW);
-    if (switch_pump) {
-      switch_pump = 0;
-      Blynk.virtualWrite(V1, 0);
-      BLYNK_LOG("SWITCH OFF");
-    }
+    switch_pump_1 = 0;
+    Blynk.virtualWrite(V1, 0);
+    BLYNK_LOG("SWITCH 1 OFF");
   }
-  BLYNK_LOG("soil moisture: %d", soil_percent_1);
-  // put device in deep sleep
-  ESP.deepSleep(time_sleep);
-
+  if (switch_pump_2) {
+    digitalWrite(PUMP_2, HIGH);
+    BLYNK_LOG("SWITCH 2 ON");
+    delay(1000);
+    digitalWrite(PUMP_2, LOW);
+    switch_pump_2 = 0;
+    Blynk.virtualWrite(V3, 0);
+    BLYNK_LOG("SWITCH 2 OFF");
+  }
 }
 
 void setup()
@@ -81,9 +93,12 @@ void setup()
   timer.setInterval(10000L, myTimerEvent);
   // Pin assignment
   pinMode(SENSOR_1, OUTPUT);
+  pinMode(SENSOR_2, OUTPUT);
   pinMode(PUMP_1, OUTPUT);
+  pinMode(PUMP_2, OUTPUT);
   digitalWrite(PUMP_1, LOW);
-  delay(2000);
+  digitalWrite(PUMP_2, LOW);
+  delay(100);
 }
 
 void loop()
