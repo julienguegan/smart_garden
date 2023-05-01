@@ -1,16 +1,15 @@
 #define BLYNK_PRINT Serial // Defines the object that is used for printing
-//#define BLYNK_DEBUG        // Optional, this enables more detailed prints
 #define BLYNK_TEMPLATE_ID "TMPLo61F7WPj"
 #define BLYNK_DEVICE_NAME "smart garden"
 #define BLYNK_AUTH_TOKEN "VjFGkzXrMZ1NyLNuP3e8g2I0JMeawqu9"
+//#define BLYNK_DEBUG      // Optional, this enables more detailed prints
+//#define BLYNK_PRINT Serial // Comment this out to disable prints and save space
 
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 #include "Arduino.h"
 
-// Comment this out to disable prints and save space
-//#define BLYNK_PRINT Serial
 // PIN for soil sensor 
 #define SENSOR_1 33
 #define SENSOR_2 35
@@ -18,7 +17,7 @@
 #define PUMP_1 32
 #define PUMP_2 13
 
-// Your WiFi credentials. Set password to "" for open networks.
+// WiFi credentials
 char auth[] = BLYNK_AUTH_TOKEN;
 char ssid[] = "virus_exe";
 char pass[] = "nonpasdewifipourtoi";
@@ -27,25 +26,49 @@ const int calib_air_1   = 3440;
 const int calib_water_1 = 1555;
 const int calib_air_2   = 3420;
 const int calib_water_2 = 1420;
-int soil_value_1    = 0;
-int soil_value_2    = 0;
-int soil_percent_1  = 0;
-int soil_percent_2  = 0;
-bool switch_pump_1  = 0;
-bool switch_pump_2  = 0;
+int soil_value_1      = 0;
+int soil_value_2      = 0;
+int soil_percent_1    = 0;
+int soil_percent_2    = 0;
+bool switch_pump_1    = 0;
+bool switch_pump_2    = 0;
+bool switch_auto_mode = 0;
+int moisture_threshold = 50;
+int time_pump_1 = 1;
+
 // blynk timer
 BlynkTimer timer;
 
-// This function is called every time the Virtual Pin 1 state changes
+// This functions are called every time the Virtual Pin state changes
+// switch to activate pump 1
 BLYNK_WRITE(V1)
 {
   switch_pump_1 = param.asInt();
-  BLYNK_LOG("switch 1: %d", switch_pump_1);
+  BLYNK_LOG("switch pump 1: %d", switch_pump_1);
 }
+// switch to activate pump 2
 BLYNK_WRITE(V3)
 {
   switch_pump_2 = param.asInt();
-  BLYNK_LOG("switch 2: %d", switch_pump_2);
+  BLYNK_LOG("switch pump 2: %d", switch_pump_2);
+}
+// slider to change moisture threshold for auto mode
+BLYNK_WRITE(V4)
+{
+  moisture_threshold = param.asInt();
+  BLYNK_LOG("moisture threshold: %d", moisture_threshold);
+}
+// slider to change time for pump activity
+BLYNK_WRITE(V5)
+{
+  time_pump_1 = param.asInt();
+  BLYNK_LOG("time pump 1: %d", time_pump_1);
+}
+// switch to activate auto mode
+BLYNK_WRITE(V6)
+{
+  switch_auto_mode = param.asInt();
+  BLYNK_LOG("switch auto mode: %d", switch_auto_mode);
 }
 
 // This function sends Arduino's uptime every second to Virtual Pin 2.
@@ -64,11 +87,11 @@ void myTimerEvent()
   // send value to virtual pin 
   Blynk.virtualWrite(V0, soil_percent_1);
   Blynk.virtualWrite(V2, soil_percent_2);
-  // activate pump for 1 second when switch is on
+  // activate pump for 'time_pump_1' second when switch is on
   if (switch_pump_1) {
     digitalWrite(PUMP_1, HIGH);
     BLYNK_LOG("SWITCH 1 ON");
-    delay(1000);
+    delay(time_pump_1*1e3);
     digitalWrite(PUMP_1, LOW);
     switch_pump_1 = 0;
     Blynk.virtualWrite(V1, 0);
@@ -82,6 +105,18 @@ void myTimerEvent()
     switch_pump_2 = 0;
     Blynk.virtualWrite(V3, 0);
     BLYNK_LOG("SWITCH 2 OFF");
+  }
+  // auto mode
+  if (switch_auto_mode) {
+    if (soil_percent_1 < moisture_threshold) {
+      digitalWrite(PUMP_1, HIGH);
+      BLYNK_LOG("SWITCH 1 ON");
+      delay(time_pump_1*1e3);
+      digitalWrite(PUMP_1, LOW);
+      switch_pump_1 = 0;
+      Blynk.virtualWrite(V1, 0);
+      BLYNK_LOG("SWITCH 1 OFF");
+    }
   }
 }
 
@@ -98,7 +133,6 @@ void setup()
   pinMode(PUMP_2, OUTPUT);
   digitalWrite(PUMP_1, LOW);
   digitalWrite(PUMP_2, LOW);
-  delay(100);
 }
 
 void loop()
