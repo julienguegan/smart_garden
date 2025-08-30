@@ -20,7 +20,7 @@
 // WiFi credentials
 char auth[] = BLYNK_AUTH_TOKEN;
 char ssid[] = "virus_exe";
-char pass[] = "nonpasdewifipourtoi";
+char pass[] = WIFI_PASSWORD;
 // constant value for handling sensor
 const int calib_air_1   = 3440;
 const int calib_water_1 = 1555;
