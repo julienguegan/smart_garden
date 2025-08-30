@@ -1,0 +1,6 @@
+[env:featheresp32_test]
+platform = espressif32
+board = featheresp32
+framework = arduino
+test_build_src = true
+build_src_filter = +<*> -<.git/> -<.svn/> -<example/> -<examples/> -<test/> +<test/test_pumps.cpp>
