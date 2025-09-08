@@ -3,3 +3,8 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Configuration files with sensitive data
+platformio.ini
+# Keep the example file in git
+!platformio.ini.example

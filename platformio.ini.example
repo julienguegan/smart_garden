@@ -1,0 +1,23 @@
+; PlatformIO Project Configuration File
+;
+;   Build options: build flags, source filter
+;   Upload options: custom upload port, speed and extra flags
+;   Library options: dependencies, extra library storages
+;   Advanced options: extra scripting
+;
+; Please visit documentation for the other options and examples
+; https://docs.platformio.org/page/projectconf.html
+
+[env:featheresp32]
+platform = espressif32
+board = featheresp32
+framework = arduino
+lib_deps = blynkkk/Blynk@^1.1.0
+build_flags = 
+    -D WIFI_PASSWORD=\"your_wifi_password_here\"
+
+; Pour utiliser ce fichier :
+; 1. Copiez ce fichier et renommez-le en 'platformio.ini'
+; 2. Remplacez 'your_wifi_password_here' par votre mot de passe WiFi
+; 3. OU définissez la variable d'environnement WIFI_PASSWORD avant de compiler :
+;    export WIFI_PASSWORD="votre_mot_de_passe"
